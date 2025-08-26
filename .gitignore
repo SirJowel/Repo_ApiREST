@@ -1,0 +1,10 @@
+#exclude all files for a node application with express
+node_modules
+.env
+.DS_Store
+npm-debug.log
+yarn-error.log
+.vscode
+dist
+coverage
+.idea
