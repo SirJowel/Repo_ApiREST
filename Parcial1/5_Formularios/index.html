@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Formulario con Multer</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        
+        .container {
+            background-color: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #555;
+        }
+        
+        input, textarea, select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 16px;
+            box-sizing: border-box;
+        }
+        
+        textarea {
+            height: 100px;
+            resize: vertical;
+        }
+        
+        .file-input {
+            border: 2px dashed #ddd;
+            padding: 20px;
+            text-align: center;
+            background-color: #fafafa;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .file-input:hover {
+            border-color: #007bff;
+            background-color: #f0f8ff;
+        }
+        
+        .file-input.dragover {
+            border-color: #007bff;
+            background-color: #e3f2fd;
+        }
+        
+        #file {
+            display: none;
+        }
+        
+        button {
+            background-color: #007bff;
+            color: white;
+            padding: 12px 30px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            width: 100%;
+            transition: background-color 0.3s ease;
+        }
+        
+        button:hover {
+            background-color: #0056b3;
+        }
+        
+        button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+        
+        .message {
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 5px;
+            display: none;
+        }
+        
+        .message.success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .message.error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        .progress {
+            width: 100%;
+            height: 20px;
+            background-color: #f0f0f0;
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 10px 0;
+            display: none;
+        }
+        
+        .progress-bar {
+            height: 100%;
+            background-color: #007bff;
+            transition: width 0.3s ease;
+        }
+        
+        .files-list {
+            margin-top: 30px;
+        }
+        
+        .file-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            background-color: #f8f9fa;
+            margin: 5px 0;
+            border-radius: 5px;
+            border: 1px solid #dee2e6;
+        }
+        
+        .file-info {
+            flex-grow: 1;
+        }
+        
+        .file-name {
+            font-weight: bold;
+            color: #333;
+        }
+        
+        .file-size {
+            font-size: 12px;
+            color: #666;
+        }
+        
+        .file-preview {
+            width: 50px;
+            height: 50px;
+            object-fit: cover;
+            border-radius: 5px;
+            margin-left: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📁 Formulario con Subida de Archivos</h1>
+        
+        <form id="uploadForm" enctype="multipart/form-data">
+            <div class="form-group">
+                <label for="nombre">Nombre:</label>
+                <input type="text" id="nombre" name="nombre" required placeholder="Ingresa tu nombre">
+            </div>
+            
+            <div class="form-group">
+                <label for="descripcion">Descripción:</label>
+                <textarea id="descripcion" name="descripcion" placeholder="Describe el archivo que vas a subir..."></textarea>
+            </div>
+            
+            <div class="form-group">
+                <label>Archivo (Solo imágenes):</label>
+                <div class="file-input" id="fileInput">
+                    <p>📎 Haz clic aquí o arrastra una imagen</p>
+                    <p style="font-size: 12px; color: #666;">Formatos permitidos: JPG, PNG, GIF | Máximo: 5MB</p>
+                    <input type="file" id="file" name="file" accept="image/*" required>
+                </div>
+                <div id="fileName" style="margin-top: 10px; font-weight: bold; color: #007bff;"></div>
+            </div>
+            
+            <div class="progress" id="progress">
+                <div class="progress-bar" id="progressBar"></div>
+            </div>
+            
+            <button type="submit" id="submitBtn">🚀 Subir Archivo</button>
+        </form>
+        
+        <div class="message" id="message"></div>
+        
+        <div class="files-list">
+            <h3>📋 Archivos Subidos</h3>
+            <div id="filesList"></div>
+            <button type="button" onclick="loadFiles()" style="margin-top: 10px; background-color: #28a745;">🔄 Actualizar Lista</button>
+        </div>
+    </div>
+
+    <script>
+        const form = document.getElementById('uploadForm');
+        const fileInput = document.getElementById('file');
+        const fileInputDiv = document.getElementById('fileInput');
+        const fileName = document.getElementById('fileName');
+        const message = document.getElementById('message');
+        const progress = document.getElementById('progress');
+        const progressBar = document.getElementById('progressBar');
+        const submitBtn = document.getElementById('submitBtn');
+        const filesList = document.getElementById('filesList');
+
+        // Eventos para drag and drop
+        fileInputDiv.addEventListener('click', () => fileInput.click());
+        
+        fileInputDiv.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            fileInputDiv.classList.add('dragover');
+        });
+        
+        fileInputDiv.addEventListener('dragleave', () => {
+            fileInputDiv.classList.remove('dragover');
+        });
+        
+        fileInputDiv.addEventListener('drop', (e) => {
+            e.preventDefault();
+            fileInputDiv.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                fileInput.files = files;
+                updateFileName();
+            }
+        });
+
+        // Mostrar nombre del archivo seleccionado
+        fileInput.addEventListener('change', updateFileName);
+
+        function updateFileName() {
+            if (fileInput.files.length > 0) {
+                const file = fileInput.files[0];
+                fileName.textContent = `📄 ${file.name} (${formatFileSize(file.size)})`;
+            } else {
+                fileName.textContent = '';
+            }
+        }
+
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+
+        function showMessage(text, type) {
+            message.textContent = text;
+            message.className = `message ${type}`;
+            message.style.display = 'block';
+            
+            setTimeout(() => {
+                message.style.display = 'none';
+            }, 5000);
+        }
+
+        function showProgress(show) {
+            progress.style.display = show ? 'block' : 'none';
+            if (!show) {
+                progressBar.style.width = '0%';
+            }
+        }
+
+        // Envío del formulario
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const formData = new FormData(form);
+            
+            // Validaciones
+            if (!fileInput.files.length) {
+                showMessage('Por favor selecciona un archivo', 'error');
+                return;
+            }
+            
+            const file = fileInput.files[0];
+            if (file.size > 5 * 1024 * 1024) {
+                showMessage('El archivo es demasiado grande. Máximo 5MB.', 'error');
+                return;
+            }
+            
+            // Deshabilitar botón y mostrar progreso
+            submitBtn.disabled = true;
+            submitBtn.textContent = '⏳ Subiendo...';
+            showProgress(true);
+            
+            try {
+                const response = await fetch('http://localhost:3001/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    showMessage(`✅ ${result.message}`, 'success');
+                    form.reset();
+                    fileName.textContent = '';
+                    loadFiles(); // Actualizar lista de archivos
+                } else {
+                    showMessage(`❌ ${result.message}`, 'error');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                showMessage('❌ Error de conexión con el servidor', 'error');
+            } finally {
+                // Rehabilitar botón y ocultar progreso
+                submitBtn.disabled = false;
+                submitBtn.textContent = '🚀 Subir Archivo';
+                showProgress(false);
+            }
+        });
+
+        // Cargar lista de archivos
+        async function loadFiles() {
+            try {
+                const response = await fetch('http://localhost:3001/files');
+                const result = await response.json();
+                
+                if (result.success) {
+                    displayFiles(result.files);
+                } else {
+                    console.error('Error al cargar archivos:', result.message);
+                }
+            } catch (error) {
+                console.error('Error al cargar archivos:', error);
+            }
+        }
+
+        function displayFiles(files) {
+            if (files.length === 0) {
+                filesList.innerHTML = '<p style="text-align: center; color: #666;">No hay archivos subidos</p>';
+                return;
+            }
+            
+            filesList.innerHTML = files.map(file => `
+                <div class="file-item">
+                    <div class="file-info">
+                        <div class="file-name">${file.filename}</div>
+                    </div>
+                    <img src="http://localhost:3001${file.url}" alt="Preview" class="file-preview" onerror="this.style.display='none'">
+                </div>
+            `).join('');
+        }
+
+        // Cargar archivos al cargar la página
+        window.addEventListener('load', loadFiles);
+
+        // Simular progreso (opcional)
+        function simulateProgress() {
+            let width = 0;
+            const interval = setInterval(() => {
+                if (width >= 90) {
+                    clearInterval(interval);
+                } else {
+                    width += Math.random() * 10;
+                    progressBar.style.width = width + '%';
+                }
+            }, 200);
+        }
+    </script>
+</body>
+</html>
